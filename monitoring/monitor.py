@@ -41,6 +41,25 @@ for item in data["list"]:
             mem_usage_percent = f"{mem_usage_percent:.2f}%"
         except subprocess.CalledProcessError:
             mem_usage_percent = "ERROR"
+
+        # getting cpu usage
+        try:
+            cpu = subprocess.run(
+                ["multipass.exe", "exec", item["name"] , "--", "sh", "-c", 'top -bn2 -d 1 | grep "Cpu(s)" | tail -1'],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            cpu_output = cpu.stdout.split(",")
+            # taking the list of items and creating a new list with items that have the string id
+            cpu_idle = list(filter(lambda item: 'id' in item, cpu_output))[0]
+            cpu_idle_num = float(cpu_idle.replace(" ", "").replace("id", ""))
+            cpu_usage_percent = 100 - cpu_idle_num
+            cpu_usage_output = f"{cpu_usage_percent:.2f}%"
+
+        except (subprocess.CalledProcessError, IndexError, ValueError):
+            cpu_usage_output = "ERROR"
+
         # getting ip address
         ip_addresses = item["ipv4"]
         if ip_addresses:
@@ -49,8 +68,9 @@ for item in data["list"]:
             ip_address = "N/A"
         print(f"""{item['name']} - {item['state']}
 IP: {ip_address}
+CPU: {cpu_usage_output}
 Memory: {mem_usage_percent}
-Disk: {disk_usage_percent}""")
+Disk: {disk_usage_percent}\n""")
     else:
         print(f"{item['name']} - {item['state']}")
 
