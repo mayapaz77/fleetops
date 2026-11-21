@@ -20,8 +20,10 @@ def get_alert_level(usage, warning, critical):
     else:
         return "CRITICAL"
 
+results = []
 
 for item in data["list"]:
+    data_dict = {}
     if item["state"] == "Running":
 
         # getting disk usage
@@ -34,11 +36,10 @@ for item in data["list"]:
             )
             disk_output = disk.stdout.splitlines()[1].split()
             disk_usage_percent = float(disk_output[4].split("%")[0])
-            disk_message = f"Disk: {disk_usage_percent:.0f}% - {get_alert_level(disk_usage_percent, 70, 85)}"
+
 
         except (subprocess.CalledProcessError, IndexError, ValueError):
             disk_usage_percent = "ERROR"
-            disk_message = f"Disk: {disk_usage_percent}"
 
         # getting memory usage
         try:
@@ -52,10 +53,9 @@ for item in data["list"]:
             total = int(memory_output[1])
             available = int(memory_output[6])
             mem_usage_percent = (total - available) / total * 100
-            memory_message = f"Memory: {mem_usage_percent:.2f}% - {get_alert_level(mem_usage_percent, 75, 90)}"
+
         except (subprocess.CalledProcessError, IndexError, ValueError, ZeroDivisionError):
             mem_usage_percent = "ERROR"
-            memory_message = f"Memory: {mem_usage_percent}"
 
         # getting cpu usage
         try:
@@ -70,19 +70,59 @@ for item in data["list"]:
             cpu_idle = list(filter(lambda item: 'id' in item, cpu_output))[0]
             cpu_idle_num = float(cpu_idle.replace(" ", "").replace("id", ""))
             cpu_usage_percent = 100 - cpu_idle_num
-            cpu_message = f"CPU: {cpu_usage_percent:.2f}% - {get_alert_level(cpu_usage_percent, 80, 95)}"
 
         except (subprocess.CalledProcessError, IndexError, ValueError):
             cpu_usage_percent = "ERROR"
-            cpu_message = f"CPU: {cpu_usage_percent}"
+
         # getting ip address
         ip_addresses = item["ipv4"]
         if ip_addresses:
             ip_address = ip_addresses[0]
         else:
             ip_address = "N/A"
-        # printing the results
-        print(f"{item['name']} - {item['state']}\nIP: {ip_address}\n{cpu_message}\n{memory_message}\n{disk_message}\n")
-    else:
-        print(f"{item['name']} - {item['state']}")
 
+        data_dict["name"] = item["name"]
+        data_dict["state"] = item["state"]
+        data_dict["disk"] = disk_usage_percent
+        data_dict["memory"] = mem_usage_percent
+        data_dict["cpu"] = cpu_usage_percent
+        data_dict["ip"] = ip_address
+
+        results.append(data_dict)
+    
+    # the server is not running
+    else:
+        data_dict["name"] = item["name"]
+        data_dict["state"] = item["state"]
+        results.append(data_dict)
+
+# printing the results
+for server_result in results:
+    name = server_result['name']
+    state = server_result['state']
+
+    if state == "Running":
+        ip_msg = f"IP: {server_result['ip']}"
+
+        # set cpu message var
+        if server_result['cpu'] == "ERROR":
+            cpu_msg = f"CPU: {server_result['cpu']}"
+        else:
+            cpu_msg = f"CPU: {server_result['cpu']:.2f}% - {get_alert_level(server_result['cpu'], 80, 95)}"
+
+        # set memory message var
+        if server_result['memory'] == "ERROR":
+            mem_msg = f"Memory: {server_result['memory']}"
+        else:
+            mem_msg = f"Memory: {server_result['memory']:.2f}% - {get_alert_level(server_result['memory'], 75, 90)}"
+
+        # set disk message var
+        if server_result['disk'] == "ERROR":
+            disk_msg = f"Disk: {server_result['disk']}"
+        else:
+            disk_msg = f"Disk: {server_result['disk']:.0f}% - {get_alert_level(server_result['disk'], 70, 85)}"
+
+        print(f"{name} - {state}\n{ip_msg}\n{cpu_msg}\n{mem_msg}\n{disk_msg}\n")
+
+    else:
+        print(f"{name} - {state}\n")
