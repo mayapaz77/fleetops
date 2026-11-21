@@ -1,14 +1,30 @@
 import json
 import subprocess
+import sys
 
 # getting the list of servers
-servers = subprocess.run(
-    ["multipass.exe", "list", "--format", "json"],
-    capture_output=True,
-    text=True,
-    check=True
-)
-data = json.loads(servers.stdout)
+try:
+    servers = subprocess.run(
+        ["multipass.exe", "list", "--format", "json"],
+        capture_output=True,
+        timeout=10,
+        text=True,
+        check=True
+    )
+    data = json.loads(servers.stdout)
+
+except subprocess.TimeoutExpired as e:
+    print(f"Multipass timed out after {e.timeout} seconds.")
+    sys.exit(1)
+
+except subprocess.CalledProcessError as e:
+    print(f"Multipass failed with exit code {e.returncode}: {e.stderr}")
+    sys.exit(1)
+
+except (json.JSONDecodeError, AttributeError) as e:
+    print(f"Failed to parse JSON: {e.msg} (line {e.lineno}, col {e.colno})")
+    sys.exit(1)
+
 
 # def function for getting the usage level of all 3 components
 def get_alert_level(usage, warning, critical):
