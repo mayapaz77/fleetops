@@ -1,6 +1,7 @@
 import json
 import subprocess
 
+# getting the list of servers
 servers = subprocess.run(
     ["multipass.exe", "list", "--format", "json"],
     capture_output=True,
@@ -8,6 +9,17 @@ servers = subprocess.run(
     check=True
 )
 data = json.loads(servers.stdout)
+
+# def function for getting the usage level of all 3 components
+def get_alert_level(usage, warning, critical):
+
+    if usage < warning:
+        return "OK"
+    elif usage < critical:
+        return "WARNING"
+    else:
+        return "CRITICAL"
+
 
 for item in data["list"]:
     if item["state"] == "Running":
@@ -21,10 +33,12 @@ for item in data["list"]:
                 check=True
             )
             disk_output = disk.stdout.splitlines()[1].split()
-            disk_usage_percent = disk_output[4]
+            disk_usage_percent = float(disk_output[4].split("%")[0])
+            disk_message = f"Disk: {disk_usage_percent:.0f}% - {get_alert_level(disk_usage_percent, 70, 85)}"
 
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, IndexError, ValueError):
             disk_usage_percent = "ERROR"
+            disk_message = f"Disk: {disk_usage_percent}"
 
         # getting memory usage
         try:
@@ -38,9 +52,10 @@ for item in data["list"]:
             total = int(memory_output[1])
             available = int(memory_output[6])
             mem_usage_percent = (total - available) / total * 100
-            mem_usage_percent = f"{mem_usage_percent:.2f}%"
-        except subprocess.CalledProcessError:
+            memory_message = f"Memory: {mem_usage_percent:.2f}% - {get_alert_level(mem_usage_percent, 75, 90)}"
+        except (subprocess.CalledProcessError, IndexError, ValueError, ZeroDivisionError):
             mem_usage_percent = "ERROR"
+            memory_message = f"Memory: {mem_usage_percent}"
 
         # getting cpu usage
         try:
@@ -55,22 +70,19 @@ for item in data["list"]:
             cpu_idle = list(filter(lambda item: 'id' in item, cpu_output))[0]
             cpu_idle_num = float(cpu_idle.replace(" ", "").replace("id", ""))
             cpu_usage_percent = 100 - cpu_idle_num
-            cpu_usage_output = f"{cpu_usage_percent:.2f}%"
+            cpu_message = f"CPU: {cpu_usage_percent:.2f}% - {get_alert_level(cpu_usage_percent, 80, 95)}"
 
         except (subprocess.CalledProcessError, IndexError, ValueError):
-            cpu_usage_output = "ERROR"
-
+            cpu_usage_percent = "ERROR"
+            cpu_message = f"CPU: {cpu_usage_percent}"
         # getting ip address
         ip_addresses = item["ipv4"]
         if ip_addresses:
             ip_address = ip_addresses[0]
         else:
             ip_address = "N/A"
-        print(f"""{item['name']} - {item['state']}
-IP: {ip_address}
-CPU: {cpu_usage_output}
-Memory: {mem_usage_percent}
-Disk: {disk_usage_percent}\n""")
+        # printing the results
+        print(f"{item['name']} - {item['state']}\nIP: {ip_address}\n{cpu_message}\n{memory_message}\n{disk_message}\n")
     else:
         print(f"{item['name']} - {item['state']}")
 
