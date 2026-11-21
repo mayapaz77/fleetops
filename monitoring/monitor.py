@@ -31,6 +31,7 @@ for item in data["list"]:
             disk = subprocess.run(
                 ["multipass.exe", "exec", item["name"] , "--", "df", "-Ph", "/"],
                 capture_output=True,
+                timeout=5,
                 text=True,
                 check=True
             )
@@ -38,7 +39,7 @@ for item in data["list"]:
             disk_usage_percent = float(disk_output[4].split("%")[0])
 
 
-        except (subprocess.CalledProcessError, IndexError, ValueError):
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, IndexError, ValueError):
             disk_usage_percent = "ERROR"
 
         # getting memory usage
@@ -46,6 +47,7 @@ for item in data["list"]:
             memory = subprocess.run(
                 ["multipass.exe", "exec", item["name"] , "--", "free", "-b"],
                 capture_output=True,
+                timeout=5,
                 text=True,
                 check=True
             )
@@ -54,7 +56,7 @@ for item in data["list"]:
             available = int(memory_output[6])
             mem_usage_percent = (total - available) / total * 100
 
-        except (subprocess.CalledProcessError, IndexError, ValueError, ZeroDivisionError):
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, IndexError, ValueError, ZeroDivisionError):
             mem_usage_percent = "ERROR"
 
         # getting cpu usage
@@ -62,6 +64,7 @@ for item in data["list"]:
             cpu = subprocess.run(
                 ["multipass.exe", "exec", item["name"] , "--", "sh", "-c", 'top -bn2 -d 1 | grep "Cpu(s)" | tail -1'],
                 capture_output=True,
+                timeout=5,
                 text=True,
                 check=True
             )
@@ -71,7 +74,7 @@ for item in data["list"]:
             cpu_idle_num = float(cpu_idle.replace(" ", "").replace("id", ""))
             cpu_usage_percent = 100 - cpu_idle_num
 
-        except (subprocess.CalledProcessError, IndexError, ValueError):
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, IndexError, ValueError):
             cpu_usage_percent = "ERROR"
 
         # getting ip address
