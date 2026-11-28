@@ -101,10 +101,14 @@ for item in list_data:
             cpu_usage_percent = "ERROR"
 
         # getting ip address
-        ip_addresses = item["ipv4"]
-        if ip_addresses:
-            ip_address = ip_addresses[0]
-        else:
+        try:
+            ip_addresses = item["ipv4"]
+            if ip_addresses:
+                ip_address = ip_addresses[0]
+            else:
+                ip_address = "N/A"
+
+        except KeyError:
             ip_address = "N/A"
 
         data_dict["name"] = item["name"]
