@@ -38,7 +38,14 @@ def get_alert_level(usage, warning, critical):
 
 results = []
 
-for item in data["list"]:
+try:
+    list_data = data["list"]
+
+except KeyError:
+    print("ERROR: Multipass returned an unexpected JSON structure")
+    sys.exit(1)
+
+for item in list_data:
     data_dict = {}
     if item["state"] == "Running":
 
