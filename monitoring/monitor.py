@@ -22,7 +22,7 @@ except subprocess.CalledProcessError as e:
     sys.exit(1)
 
 except (json.JSONDecodeError, AttributeError) as e:
-    print(f"Failed to parse JSON: {e.msg} (line {e.lineno}, col {e.colno})")
+    print(f"Failed to process Multipass output: {e}")
     sys.exit(1)
 
 
@@ -47,7 +47,15 @@ except KeyError:
 
 for item in list_data:
     data_dict = {}
-    if item["state"] == "Running":
+
+    # making sure state key exists
+    try:
+        item_state = item["state"]
+
+    except KeyError:
+        item_state = "UNKNOWN"
+
+    if item_state == "Running":
 
         # getting disk usage
         try:
@@ -112,18 +120,18 @@ for item in list_data:
             ip_address = "N/A"
 
         data_dict["name"] = item["name"]
-        data_dict["state"] = item["state"]
+        data_dict["state"] = item_state
         data_dict["disk"] = disk_usage_percent
         data_dict["memory"] = mem_usage_percent
         data_dict["cpu"] = cpu_usage_percent
         data_dict["ip"] = ip_address
 
         results.append(data_dict)
-    
+
     # the server is not running
     else:
         data_dict["name"] = item["name"]
-        data_dict["state"] = item["state"]
+        data_dict["state"] = item_state
         results.append(data_dict)
 
 # printing the results
